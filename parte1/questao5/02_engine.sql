@@ -20,6 +20,7 @@
 CREATE OR REPLACE FUNCTION fn_dte_validar()
 RETURNS TRIGGER
 LANGUAGE plpgsql
+SET search_path = public -- garante que as tabelas dte_* sejam encontradas mesmo se o chamador usar outro search_path
 AS $$
 DECLARE
     v_nome_maquina  TEXT;
@@ -48,6 +49,11 @@ BEGIN
     -- Lê o valor da coluna de estado dinamicamente (sem conhecer a tabela).
     v_estado_novo := row_to_json(NEW) ->> v_nome_coluna;
 
+    -- Diferencia "coluna não existe" (erro de configuração da trigger) de "valor NULL".
+    IF NOT (row_to_json(NEW)::jsonb ? v_nome_coluna) THEN
+        RAISE EXCEPTION 'A coluna "%" não existe na tabela "%" (verifique o 2º argumento da trigger).', v_nome_coluna, TG_TABLE_NAME;
+    END IF;
+
     IF v_estado_novo IS NULL THEN
         RAISE EXCEPTION 'A coluna de estado "%" não pode ser NULL (máquina "%").', v_nome_coluna, v_nome_maquina;
     END IF;
@@ -65,7 +71,7 @@ BEGIN
             RAISE EXCEPTION '"%" não é um estado inicial válido da máquina "%".', v_estado_novo, v_nome_maquina;
         END IF;
 
-    ELSE -- TG_OP = 'UPDATE'
+    ELSE -- UPDATE (esta função deve ser usada apenas em BEFORE INSERT OR UPDATE)
         v_estado_antigo := row_to_json(OLD) ->> v_nome_coluna;
 
         -- Se o UPDATE não mexeu no estado (ex.: alterou outra coluna), passa direto.
