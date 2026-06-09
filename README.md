@@ -99,6 +99,7 @@ docker compose down -v        # remover container E apagar os dados do volume
 │   ├── questao1.sql
 │   ├── questao2.sql
 │   ├── questao3.sql
-│   └── questao4.sql
+│   ├── questao4.sql
+│   └── questao5/                   # validação genérica de DTE (metadados + trigger)
 └── parte2/                         # questões da Parte 2 (regras semânticas)
 ```
