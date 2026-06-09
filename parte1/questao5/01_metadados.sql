@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS dte_estado (
     maquina_id INT NOT NULL REFERENCES dte_maquina (maquina_id) ON DELETE CASCADE,
     estado     VARCHAR(100) NOT NULL,
     is_inicial BOOLEAN NOT NULL DEFAULT FALSE, -- pode ser usado em um INSERT?
-    is_final   BOOLEAN NOT NULL DEFAULT FALSE, -- estado terminal (informativo: um estado final é aquele sem transições de saída)
+    is_final   BOOLEAN NOT NULL DEFAULT FALSE, -- estado terminal; informativo — a engine bloqueia saídas pela ausência de linhas em dte_transicao, não por este campo
     PRIMARY KEY (maquina_id, estado)
 );
 
