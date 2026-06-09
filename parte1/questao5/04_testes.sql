@@ -52,6 +52,8 @@ BEGIN
 
     ---------------------------------------------------------------------------
     -- Caso 4: UPDATE PAGA -> CANCELADA (transição NÃO existe) -> deve FALHAR
+    -- (a spec listava PENDENTE -> ENVIADA; trocamos por PAGA -> CANCELADA, que
+    --  é igualmente uma seta inexistente, pois a linha 99001 já está em PAGA)
     ---------------------------------------------------------------------------
     BEGIN
         UPDATE invoice SET status = 'CANCELADA' WHERE invoice_id = 99001;
@@ -81,24 +83,51 @@ BEGIN
     END;
 
     ---------------------------------------------------------------------------
-    -- Caso 7: sair de estado final (ENVIADA -> REEMBOLSADA -> tentar PAGA)
+    -- Caso 7a: UPDATE ENVIADA -> REEMBOLSADA (transição existe) -> deve PASSAR
     ---------------------------------------------------------------------------
     BEGIN
-        UPDATE invoice SET status = 'REEMBOLSADA' WHERE invoice_id = 99001; -- válida
-        UPDATE invoice SET status = 'PAGA'        WHERE invoice_id = 99001; -- final não tem saída
-        RAISE NOTICE '[FALHA] Caso 7: saída de estado final deveria ter sido bloqueada!';
+        UPDATE invoice SET status = 'REEMBOLSADA' WHERE invoice_id = 99001;
+        RAISE NOTICE '[OK] Caso 7a: transição ENVIADA -> REEMBOLSADA foi aceita.';
     EXCEPTION WHEN OTHERS THEN
-        RAISE NOTICE '[ERRO ESPERADO] Caso 7: %', SQLERRM;
+        RAISE NOTICE '[FALHA] Caso 7a: transição válida foi rejeitada: %', SQLERRM;
+    END;
+
+    ---------------------------------------------------------------------------
+    -- Caso 7b: sair de estado final (REEMBOLSADA -> PAGA) -> deve FALHAR
+    -- (estado final não tem setas de saída em dte_transicao)
+    ---------------------------------------------------------------------------
+    BEGIN
+        UPDATE invoice SET status = 'PAGA' WHERE invoice_id = 99001;
+        RAISE NOTICE '[FALHA] Caso 7b: saída de estado final deveria ter sido bloqueada!';
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE '[ERRO ESPERADO] Caso 7b: %', SQLERRM;
     END;
 
     ---------------------------------------------------------------------------
     -- Caso 8: estado NULL -> deve FALHAR
+    -- (a trigger BEFORE roda antes da checagem NOT NULL da coluna, então a
+    --  mensagem vem da engine; a engine cobre também o caso genérico de
+    --  colunas de estado sem NOT NULL)
     ---------------------------------------------------------------------------
     BEGIN
         UPDATE invoice SET status = NULL WHERE invoice_id = 99001;
         RAISE NOTICE '[FALHA] Caso 8: estado NULL deveria ter sido bloqueado!';
     EXCEPTION WHEN OTHERS THEN
         RAISE NOTICE '[ERRO ESPERADO] Caso 8: %', SQLERRM;
+    END;
+
+
+    ---------------------------------------------------------------------------
+    -- Caso 9: INSERT PENDENTE e UPDATE PENDENTE -> CANCELADA -> deve PASSAR
+    -- (cobre a segunda saída de PENDENTE e a chegada a um estado final)
+    ---------------------------------------------------------------------------
+    BEGIN
+        INSERT INTO invoice (invoice_id, customer_id, invoice_date, total, status)
+        VALUES (99002, 1, now(), 10.00, 'PENDENTE');
+        UPDATE invoice SET status = 'CANCELADA' WHERE invoice_id = 99002;
+        RAISE NOTICE '[OK] Caso 9: transição PENDENTE -> CANCELADA foi aceita.';
+    EXCEPTION WHEN OTHERS THEN
+        RAISE NOTICE '[FALHA] Caso 9: fluxo válido foi rejeitado: %', SQLERRM;
     END;
 
     -- Limpeza final: remove as linhas criadas pelo teste.
