@@ -16,9 +16,13 @@
 -- 1) Adiciona a coluna de estado na tabela real do Chinook.
 --    Linhas já existentes recebem o DEFAULT ('PENDENTE').
 ALTER TABLE invoice
-    ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'PENDENTE';
+    ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'PENDENTE'; -- 20 chars cobre todos os estados deste DTE
 
 -- 2) (Re)cadastra a máquina. O ON DELETE CASCADE limpa estados e transições.
+--    Os passos 2-5 rodam em uma transação: a trigger já existente continua
+--    enxergando a máquina antiga até o COMMIT, sem janela de inconsistência.
+BEGIN;
+
 DELETE FROM dte_maquina WHERE nome = 'invoice_status';
 
 INSERT INTO dte_maquina (nome, descricao)
@@ -57,3 +61,5 @@ CREATE TRIGGER trg_dte_invoice
     BEFORE INSERT OR UPDATE ON invoice
     FOR EACH ROW
     EXECUTE FUNCTION fn_dte_validar('invoice_status', 'status');
+
+COMMIT;
