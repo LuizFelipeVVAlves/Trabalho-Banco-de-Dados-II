@@ -43,3 +43,7 @@ CREATE TRIGGER trg_dte_minha_tabela
     FOR EACH ROW
     EXECUTE FUNCTION fn_dte_validar('nome_da_maquina', 'nome_da_coluna');
 ```
+
+> Escopo: a validação cobre INSERT e UPDATE. DELETE fica fora do DTE por
+> decisão de projeto — remover uma linha encerra o ciclo de vida dela, não
+> é uma transição de estado.
