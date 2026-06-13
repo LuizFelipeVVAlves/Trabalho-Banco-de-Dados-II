@@ -48,29 +48,54 @@ Cada item da tabela `invoice_line` representa a venda de uma música. Permitir q
 
 ---
 
-## Regra 3 – Consistência do valor total da fatura
+## Regra 3 – Não permitir ciclos na hierarquia de funcionários
 
-O valor armazenado na coluna `invoice.total` deve ser exatamente igual à soma dos produtos entre `unit_price` e `quantity` de todos os registros da tabela `invoice_line` pertencentes à mesma fatura.
+A estrutura hierárquica da empresa, representada pela coluna `reports_to` da tabela `employee`, não pode conter ciclos.
 
 ### Justificativa
 
-A coluna `invoice.total` armazena uma informação redundante em relação aos dados presentes em `invoice_line`. Para garantir a integridade dos dados, o valor total da fatura deve ser mantido consistente sempre que houver inserções, alterações ou exclusões de itens.
+A coluna `reports_to` indica o supervisor direto de cada funcionário. Embora a chave estrangeira existente garanta que o supervisor informado exista na tabela `employee`, ela não impede a criação de relacionamentos circulares.
+
+A existência de ciclos compromete a integridade da hierarquia organizacional, tornando impossível determinar corretamente as relações de subordinação entre funcionários.
+
+Essa restrição não pode ser garantida apenas pela estrutura relacional do banco de dados, exigindo validação adicional através de mecanismos de programação em banco de dados.
 
 ### Exemplo válido
 
-| UnitPrice | Quantity | Subtotal |
-| --------- | -------- | -------- |
-| 0.99      | 2        | 1.98     |
-| 1.99      | 3        | 5.97     |
+| EmployeeId | ReportsTo |
+| ---------- | --------- |
+| 1          | NULL      |
+| 2          | 1         |
+| 3          | 2         |
 
-Total da fatura = 7.95
-
-### Exemplo inválido
-
-Mesmos itens acima, porém:
+Hierarquia:
 
 ```text
-invoice.total = 8.50
+1
+└── 2
+    └── 3
 ```
 
-Nesse caso, o valor armazenado na fatura não corresponde à soma de seus itens.
+### Exemplos inválidos
+
+Funcionário supervisionando a si mesmo:
+
+| EmployeeId | ReportsTo |
+| ---------- | --------- |
+| 1          | 1         |
+
+Hierarquia circular:
+
+| EmployeeId | ReportsTo |
+| ---------- | --------- |
+| 1          | 2         |
+| 2          | 1         |
+
+Hierarquia circular indireta:
+
+| EmployeeId | ReportsTo |
+| ---------- | --------- |
+| 1          | 2         |
+| 2          | 3         |
+| 3          | 1         |
+
